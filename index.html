@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#6FC276">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>AMT Investment Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #FCFCFC;
+  --bg-secondary: #F7F7F7;
+  --bg-card: #FFFFFF;
+  --bg-input: #F2F2F2;
+  --border: #E0E0E0;
+  --border-active: #6FC276;
+  --green: #6FC276;
+  --green-dim: #5AA862;
+  --green-dark: #6FC27622;
+  --red: #D94F4F;
+  --red-dim: #D94F4F33;
+  --amber: #C48A2A;
+  --blue: #3A8FBF;
+  --purple: #8B6FB0;
+  --text-primary: #2D2A26;
+  --text-secondary: #6B6560;
+  --text-dim: #9E9790;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Space Grotesk', sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg-primary); color: var(--text-primary);
+  font-family: var(--font-mono); font-size: 14px;
+}
+
+/* ─── SCANLINE OVERLAY ─── */
+body::before {
+  content: ''; position: fixed; inset:0; z-index: 9999; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(111,194,118,0.03) 2px, rgba(111,194,118,0.03) 4px);
+}
+
+/* ─── APP LAYOUT ─── */
+#app { display:flex; flex-direction:column; height:100vh; }
+
+/* ─── TOP BAR ─── */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 12px 16px; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border); flex-shrink:0;
+  min-height: 56px;
+}
+.topbar-left { display:flex; align-items:center; gap:10px; }
+.topbar-logo {
+  font-family: var(--font-sans); font-weight:700; font-size:18px;
+  color: var(--green); letter-spacing: -0.5px;
+}
+.topbar-logo span { color: var(--text-dim); font-weight:400; font-size:12px; margin-left:4px; }
+.topbar-right { display:flex; gap:8px; align-items:center; }
+
+/* Portfolio Toggle */
+.portfolio-toggle {
+  display:flex; background: var(--bg-input); border-radius:8px;
+  border:1px solid var(--border); overflow:hidden;
+}
+.portfolio-toggle button {
+  padding: 6px 14px; font-family: var(--font-mono); font-size:12px; font-weight:600;
+  background:none; border:none; color: var(--text-secondary); cursor:pointer;
+  transition: all 0.2s;
+}
+.portfolio-toggle button.active {
+  background: var(--green-dark); color: var(--green);
+}
+
+/* ─── TAB CONTENT ─── */
+.screen { display:none; flex:1; overflow-y:auto; flex-direction:column; }
+.screen.active { display:flex; }
+
+/* ─── CHAT SCREEN ─── */
+.chat-container { flex:1; display:flex; flex-direction:column; }
+.chat-messages {
+  flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px;
+  scroll-behavior: smooth;
+}
+.msg {
+  max-width: 90%; padding: 12px 16px; border-radius: 12px;
+  font-size: 13px; line-height: 1.65; word-wrap: break-word;
+  animation: msgIn 0.3s ease;
+}
+@keyframes msgIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+.msg.user {
+  align-self: flex-end; background: linear-gradient(135deg, #E8F5E9, #D7ECD9);
+  border: 1px solid #B5D8B8; color: #2D5F30;
+}
+.msg.assistant {
+  align-self: flex-start; background: var(--bg-card);
+  border: 1px solid var(--border); color: var(--text-primary);
+}
+.msg.system {
+  align-self: center; background: none; border:1px dashed var(--border);
+  color: var(--text-dim); font-size:11px; padding:8px 14px; text-align:center;
+}
+
+/* Markdown in messages */
+.msg h2, .msg h3 { color:var(--green); margin:10px 0 6px; font-family:var(--font-sans); }
+.msg h2 { font-size:15px; } .msg h3 { font-size:13px; }
+.msg strong { color:var(--green); font-weight:600; }
+.msg em { color:var(--amber); font-style:italic; }
+.msg code { background:var(--bg-input); padding:1px 5px; border-radius:3px; font-size:12px; color:var(--blue); }
+.msg pre { background:#F2F2F2; padding:10px; border-radius:6px; overflow-x:auto; margin:8px 0; border:1px solid var(--border); }
+.msg pre code { background:none; padding:0; }
+.msg table { width:100%; border-collapse:collapse; margin:8px 0; font-size:12px; }
+.msg th { background:var(--bg-input); color:var(--green); padding:6px 8px; text-align:left; border:1px solid var(--border); font-weight:600; }
+.msg td { padding:6px 8px; border:1px solid var(--border); }
+.msg ul, .msg ol { padding-left:20px; margin:6px 0; }
+.msg li { margin:3px 0; }
+.msg hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
+.msg blockquote { border-left:3px solid var(--green-dim); padding-left:12px; color:var(--text-secondary); margin:8px 0; }
+
+/* Typing indicator */
+.typing { display:flex; gap:4px; padding:16px; align-items:center; }
+.typing span { width:8px; height:8px; border-radius:50%; background:var(--green-dim); animation: blink 1.4s infinite; }
+.typing span:nth-child(2) { animation-delay:0.2s; }
+.typing span:nth-child(3) { animation-delay:0.4s; }
+@keyframes blink { 0%,80%,100%{opacity:.3} 40%{opacity:1} }
+
+/* ─── SHORTCUTS ─── */
+.shortcuts-bar {
+  padding: 8px 12px; display:flex; gap:8px; overflow-x:auto;
+  border-top:1px solid var(--border); flex-shrink:0;
+  scrollbar-width:none; background: var(--bg-secondary);
+}
+.shortcuts-bar::-webkit-scrollbar { display:none; }
+.shortcut-btn {
+  flex-shrink:0; padding:6px 14px; border-radius:20px; font-family:var(--font-mono);
+  font-size:11px; font-weight:500; border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text-secondary); cursor:pointer; transition:all 0.2s; white-space:nowrap;
+}
+.shortcut-btn:hover, .shortcut-btn:active {
+  border-color:var(--green); color:var(--green); background:var(--green-dark);
+}
+
+/* ─── INPUT BAR ─── */
+.input-bar {
+  display:flex; gap:8px; padding:12px 16px;
+  border-top:1px solid var(--border); background:var(--bg-secondary);
+  padding-bottom: calc(12px + var(--safe-bottom)); flex-shrink:0;
+}
+.input-bar textarea {
+  flex:1; background:var(--bg-input); border:1px solid var(--border); border-radius:10px;
+  padding:10px 14px; color:var(--text-primary); font-family:var(--font-mono); font-size:13px;
+  resize:none; outline:none; min-height:42px; max-height:120px; line-height:1.4;
+  transition: border-color 0.2s;
+}
+.input-bar textarea:focus { border-color:var(--green); }
+.input-bar textarea::placeholder { color:var(--text-dim); }
+.send-btn {
+  width:42px; height:42px; border-radius:10px; border:none;
+  background: var(--green); color:var(--bg-primary); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:700; transition: all 0.2s; flex-shrink:0;
+}
+.send-btn:disabled { opacity:0.3; cursor:not-allowed; }
+.send-btn:not(:disabled):active { transform:scale(0.92); }
+
+/* ─── IMAGE UPLOAD ─── */
+.attach-btn {
+  width:42px; height:42px; border-radius:10px; border:1px solid var(--border);
+  background:var(--bg-input); color:var(--text-secondary); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; transition: all 0.2s; flex-shrink:0;
+}
+.attach-btn:active { border-color:var(--green); color:var(--green); background:var(--green-dark); }
+.attach-btn.has-image { border-color:var(--green); color:var(--green); background:var(--green-dark); }
+
+.img-preview-strip {
+  display:none; padding:8px 16px; border-top:1px solid var(--border);
+  background:var(--bg-secondary); flex-shrink:0; align-items:center; gap:10px;
+}
+.img-preview-strip.active { display:flex; }
+.img-preview-thumb {
+  width:56px; height:56px; border-radius:8px; object-fit:cover;
+  border:1px solid var(--green); flex-shrink:0;
+}
+.img-preview-info { flex:1; font-size:11px; color:var(--text-secondary); }
+.img-preview-info strong { color:var(--green); display:block; margin-bottom:2px; font-size:12px; }
+.img-remove-btn {
+  width:28px; height:28px; border-radius:6px; border:1px solid var(--red-dim);
+  background:none; color:var(--red); cursor:pointer; font-size:14px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+
+/* Images in chat messages */
+.msg-image {
+  max-width:100%; border-radius:8px; margin:8px 0;
+  border:1px solid var(--border); max-height:300px; object-fit:contain;
+}
+.msg .img-label {
+  font-size:10px; color:var(--text-dim); display:flex; align-items:center; gap:4px;
+  margin-bottom:4px;
+}
+
+/* ─── PORTFOLIO SCREEN ─── */
+.portfolio-screen { padding:16px; gap:16px; }
+.card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+  padding:16px; margin-bottom:12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+}
+.card-title {
+  font-family:var(--font-sans); font-size:14px; font-weight:600;
+  color:var(--green); margin-bottom:12px; display:flex; align-items:center; gap:8px;
+}
+.form-group { margin-bottom:12px; }
+.form-label { font-size:11px; color:var(--text-secondary); margin-bottom:4px; display:block; text-transform:uppercase; letter-spacing:0.5px; }
+.form-input, .form-select {
+  width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; color:var(--text-primary); font-family:var(--font-mono); font-size:13px;
+  outline:none; transition: border-color 0.2s;
+}
+.form-input:focus, .form-select:focus { border-color:var(--green); }
+.form-select { appearance:none; cursor:pointer; }
+
+.holdings-list { display:flex; flex-direction:column; gap:8px; }
+.holding-row {
+  display:grid; grid-template-columns: 1fr 80px 80px 36px; gap:8px; align-items:center;
+}
+.holding-row input {
+  background:var(--bg-input); border:1px solid var(--border); border-radius:6px;
+  padding:8px; color:var(--text-primary); font-family:var(--font-mono); font-size:12px; outline:none;
+}
+.holding-row input:focus { border-color:var(--green); }
+.btn-remove {
+  width:32px; height:32px; border-radius:6px; border:1px solid var(--red-dim);
+  background:none; color:var(--red); cursor:pointer; font-size:16px;
+  display:flex; align-items:center; justify-content:center;
+}
+.btn-add {
+  width:100%; padding:10px; border-radius:8px; border:1px dashed var(--border);
+  background:none; color:var(--text-dim); cursor:pointer; font-family:var(--font-mono);
+  font-size:12px; transition: all 0.2s;
+}
+.btn-add:hover { border-color:var(--green); color:var(--green); }
+.btn-primary {
+  width:100%; padding:12px; border-radius:8px; border:none;
+  background:var(--green); color:var(--bg-primary); font-family:var(--font-mono);
+  font-size:13px; font-weight:600; cursor:pointer; transition: all 0.2s;
+}
+.btn-primary:active { transform:scale(0.98); }
+
+/* ─── CALCULATOR SCREEN ─── */
+.calc-screen { padding:16px; }
+.slider-container { margin:12px 0; }
+.range-slider {
+  width:100%; appearance:none; height:6px; border-radius:3px;
+  background: linear-gradient(to right, var(--green-dark), var(--green));
+  outline:none;
+}
+.range-slider::-webkit-slider-thumb {
+  appearance:none; width:22px; height:22px; border-radius:50%;
+  background:var(--green); border:3px solid var(--bg-primary); cursor:pointer;
+  box-shadow: 0 0 10px var(--green-dark);
+}
+.budget-display {
+  text-align:center; font-size:28px; font-weight:700; color:var(--green);
+  font-family:var(--font-sans); margin:8px 0;
+}
+.alloc-grid { display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+.alloc-row {
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  background:var(--bg-input); border-radius:8px; border:1px solid var(--border);
+}
+.alloc-ticker { font-weight:600; color:var(--green); min-width:60px; }
+.alloc-bar-bg { flex:1; height:8px; background:var(--bg-primary); border-radius:4px; overflow:hidden; }
+.alloc-bar { height:100%; border-radius:4px; background:var(--green); transition:width 0.5s ease; }
+.alloc-amount { font-size:12px; color:var(--text-secondary); min-width:55px; text-align:right; }
+
+/* ─── SETTINGS SCREEN ─── */
+.settings-screen { padding:16px; }
+.api-key-input {
+  font-family: var(--font-mono); letter-spacing:1px;
+}
+.status-badge {
+  display:inline-flex; align-items:center; gap:6px; padding:4px 10px;
+  border-radius:12px; font-size:11px; font-weight:600;
+}
+.status-badge.connected { background:var(--green-dark); color:var(--green); }
+.status-badge.disconnected { background:var(--red-dim); color:var(--red); }
+.status-dot { width:6px; height:6px; border-radius:50%; }
+.status-badge.connected .status-dot { background:var(--green); }
+.status-badge.disconnected .status-dot { background:var(--red); }
+
+/* ─── HISTORY SCREEN ─── */
+.history-screen { padding:16px; }
+.history-item {
+  padding:12px; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:10px; margin-bottom:8px; cursor:pointer; transition: all 0.2s;
+}
+.history-item:hover { border-color:var(--green-dim); }
+.history-date { font-size:10px; color:var(--text-dim); margin-bottom:4px; }
+.history-preview { font-size:12px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ─── BOTTOM NAV ─── */
+.bottom-nav {
+  display:flex; background:var(--bg-secondary); border-top:1px solid var(--border);
+  padding-bottom: var(--safe-bottom); flex-shrink:0;
+}
+.nav-item {
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:8px 4px; cursor:pointer; color:var(--text-dim); transition:all 0.2s;
+  border:none; background:none; font-family:var(--font-mono);
+}
+.nav-item.active { color:var(--green); }
+.nav-icon { font-size:20px; }
+.nav-label { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; }
+
+/* ─── ONBOARDING OVERLAY ─── */
+.overlay {
+  position:fixed; inset:0; background:rgba(252,252,252,0.97); z-index:100;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.overlay.hidden { display:none; }
+.onboard-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
+  padding:28px; width:100%; max-width:400px; text-align:center;
+}
+.onboard-card h2 {
+  font-family:var(--font-sans); color:var(--green); font-size:22px; margin-bottom:8px;
+}
+.onboard-card p { color:var(--text-secondary); font-size:12px; margin-bottom:20px; line-height:1.6; }
+.onboard-card .form-input { margin-bottom:16px; }
+.onboard-steps { display:flex; justify-content:center; gap:6px; margin-bottom:16px; }
+.step-dot { width:8px; height:8px; border-radius:50%; background:var(--border); }
+.step-dot.active { background:var(--green); }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text-dim); }
+
+/* ─── RESPONSIVE ─── */
+@media (min-width:768px) {
+  .msg { max-width:70%; }
+  .onboard-card { max-width:440px; padding:36px; }
+}
+
+/* ─── INSTALL BANNER ─── */
+.install-banner {
+  display:none; padding:10px 16px; background:var(--green-dark);
+  border-bottom:1px solid var(--green-dim); align-items:center; justify-content:space-between;
+  gap:10px; flex-shrink:0;
+}
+.install-banner.show { display:flex; }
+.install-banner span { font-size:12px; color:var(--green); }
+.install-btn {
+  padding:6px 14px; border-radius:6px; border:1px solid var(--green);
+  background:var(--green); color:var(--bg-primary); font-family:var(--font-mono);
+  font-size:11px; font-weight:600; cursor:pointer;
+}
+.dismiss-btn {
+  padding:6px 8px; border:none; background:none; color:var(--green-dim);
+  cursor:pointer; font-size:16px;
+}
+</style>
+</head>
+<body>
+
+<!-- ONBOARDING OVERLAY -->
+<div class="overlay" id="onboarding">
+  <div class="onboard-card">
+    <div style="font-size:40px;margin-bottom:12px;">📊</div>
+    <h2>AMT Investment Manager</h2>
+    <p>Personal investment research analyst powered by Claude AI.<br>AMT Framework v3.4 — Adaptive Margin Theory</p>
+    <div style="text-align:left; margin-bottom:16px;">
+      <div class="form-label">Access Code</div>
+      <input type="password" class="form-input" id="onboard-key" placeholder="Masukkan access code..." />
+      <div style="font-size:10px; color:var(--text-dim); margin-top:4px;">
+        Minta access code ke admin untuk menggunakan app ini.
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveKeyAndStart()">Masuk →</button>
+  </div>
+</div>
+
+<!-- INSTALL BANNER -->
+<div class="install-banner" id="install-banner">
+  <span>📱 Install AMT Invest di home screen?</span>
+  <div>
+    <button class="install-btn" id="install-btn">Install</button>
+    <button class="dismiss-btn" onclick="this.parentElement.parentElement.classList.remove('show')">✕</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">AMT<span>v3.4</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="portfolio-toggle">
+        <button class="active" data-portfolio="US" onclick="setPortfolio('US')">🇺🇸 US</button>
+        <button data-portfolio="IDX" onclick="setPortfolio('IDX')">🇮🇩 IDX</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+
+  <!-- 1) CHAT -->
+  <div class="screen active" id="screen-chat">
+    <div class="chat-container">
+      <div class="chat-messages" id="chat-messages">
+        <div class="msg system">AMT Investment Manager v3.4 — Ready<br>Ketik command atau gunakan shortcut di bawah</div>
+      </div>
+      <div class="shortcuts-bar">
+        <button class="shortcut-btn" onclick="sendShortcut('health')">🏥 Health</button>
+        <button class="shortcut-btn" onclick="sendShortcut('rebal')">⚖️ Rebal</button>
+        <button class="shortcut-btn" onclick="sendShortcut('watchlist')">👁️ Watch</button>
+        <button class="shortcut-btn" onclick="sendShortcut('market update')">📡 Market</button>
+        <button class="shortcut-btn" onclick="openAllocCalc()">💰 Allocate</button>
+        <button class="shortcut-btn" onclick="sendShortcut('full report')">📋 Full</button>
+        <button class="shortcut-btn" onclick="triggerScreenshotAnalysis()" style="border-color:var(--amber);color:var(--amber);">📸 SS Analyze</button>
+      </div>
+      <div class="img-preview-strip" id="img-preview-strip">
+        <img id="img-preview-thumb" class="img-preview-thumb" src="" alt="preview" />
+        <div class="img-preview-info">
+          <strong id="img-preview-name">screenshot.png</strong>
+          <span id="img-preview-size">Ready to analyze</span>
+        </div>
+        <button class="img-remove-btn" onclick="clearAttachedImage()">✕</button>
+      </div>
+      <div class="input-bar">
+        <input type="file" id="image-input" accept="image/*" capture="environment" style="display:none;" onchange="handleImageAttach(event)" />
+        <button class="attach-btn" id="attach-btn" onclick="document.getElementById('image-input').click()" title="Upload screenshot">📷</button>
+        <textarea id="chat-input" rows="1" placeholder="analyze AAPL, health, allocate $250 US..." onkeydown="handleKey(event)" oninput="autoGrow(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()">↑</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2) PORTFOLIO -->
+  <div class="screen" id="screen-portfolio">
+    <div class="portfolio-screen">
+      <div class="card">
+        <div class="card-title">📁 Portfolio Holdings — <span id="pf-label">US</span></div>
+        <div class="holdings-list" id="holdings-list"></div>
+        <button class="btn-add" onclick="addHoldingRow()" style="margin-top:10px;">+ Tambah Holding</button>
+      </div>
+      <div class="card">
+        <div class="card-title">💾 Actions</div>
+        <button class="btn-primary" onclick="savePortfolio()" style="margin-bottom:8px;">Save Portfolio</button>
+        <button class="btn-primary" onclick="loadToChat()" style="background:var(--bg-input); color:var(--green); border:1px solid var(--border);">Kirim ke Chat untuk Analisis →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3) CALCULATOR -->
+  <div class="screen" id="screen-calc">
+    <div class="calc-screen">
+      <div class="card">
+        <div class="card-title">💰 Quick Allocation Calculator</div>
+        <div class="form-label" style="margin-top:8px;">Monthly Budget</div>
+        <div class="budget-display" id="budget-display">$250</div>
+        <div class="slider-container">
+          <input type="range" class="range-slider" id="budget-slider" min="50" max="500" step="10" value="250" oninput="updateBudget(this.value)">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:4px;">
+            <span id="slider-min">$50</span><span id="slider-max">$500</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Suggested Split</div>
+        <div class="alloc-grid" id="alloc-grid"></div>
+      </div>
+      <button class="btn-primary" onclick="sendAllocToChat()" style="margin-top:8px;">Kirim ke Claude untuk Fine-Tune →</button>
+    </div>
+  </div>
+
+  <!-- 4) HISTORY -->
+  <div class="screen" id="screen-history">
+    <div class="history-screen">
+      <div class="card">
+        <div class="card-title">🕒 Chat History</div>
+        <div id="history-list"></div>
+      </div>
+      <button class="btn-primary" onclick="clearHistory()" style="background:var(--red-dim); color:var(--red); border:1px solid var(--red-dim);">Clear All History</button>
+    </div>
+  </div>
+
+  <!-- 5) SETTINGS -->
+  <div class="screen" id="screen-settings">
+    <div class="settings-screen">
+      <div class="card">
+        <div class="card-title">🔑 Access Configuration</div>
+        <div id="api-status" style="margin-bottom:12px;"></div>
+        <div class="form-group">
+          <div class="form-label">Access Code</div>
+          <input type="password" class="form-input" id="api-key-input" placeholder="Masukkan access code..." />
+        </div>
+        <button class="btn-primary" onclick="saveApiKey()">Save</button>
+      </div>
+      <div class="card">
+        <div class="card-title">ℹ️ About</div>
+        <div style="font-size:12px; color:var(--text-secondary); line-height:1.7;">
+          <strong style="color:var(--green);">AMT Investment Manager v1.0</strong><br>
+          Framework: Adaptive Margin Theory v3.4<br>
+          63 academic sources, 24 debates<br>
+          Model: Claude Sonnet 4<br><br>
+          ⚠️ Bukan financial advice. Keputusan investasi adalah tanggung jawab investor.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="switchScreen('chat')">
+      <span class="nav-icon">💬</span><span class="nav-label">Chat</span>
+    </button>
+    <button class="nav-item" onclick="switchScreen('portfolio')">
+      <span class="nav-icon">📁</span><span class="nav-label">Portfolio</span>
+    </button>
+    <button class="nav-item" onclick="switchScreen('calc')">
+      <span class="nav-icon">🧮</span><span class="nav-label">Calc</span>
+    </button>
+    <button class="nav-item" onclick="switchScreen('history')">
+      <span class="nav-icon">🕒</span><span class="nav-label">History</span>
+    </button>
+    <button class="nav-item" onclick="switchScreen('settings')">
+      <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+    </button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// AMT INVESTMENT MANAGER — Core Logic
+// ═══════════════════════════════════════════════════
+
+// ─── STATE ───
+let currentPortfolio = 'US';
+let chatHistory = [];
+let conversations = [];
+let appSecret = '';
+let isStreaming = false;
+let attachedImage = null; // { base64, mediaType, name, size }
+
+// ⚠️ GANTI URL INI dengan Cloudflare Worker URL kamu!
+// Contoh: https://amt-proxy.username.workers.dev
+const WORKER_URL = 'https://amt-proxy.olingga92.workers.dev';
+
+const PORTFOLIOS = {
+  US: { holdings: [], currency: '$', budgetMin:50, budgetMax:500, step:10 },
+  IDX: { holdings: [], currency: 'Rp', budgetMin:500000, budgetMax:5000000, step:100000 }
+};
+
+// Default allocations for calculator
+const DEFAULT_ALLOCS = {
+  US: [
+    { ticker:'XLE', label:'Energy', pct:20 },
+    { ticker:'ITA', label:'Defense', pct:15 },
+    { ticker:'GLDM', label:'Gold', pct:15 },
+    { ticker:'IBB', label:'Biotech', pct:10 },
+    { ticker:'MSFT', label:'Tech', pct:15 },
+    { ticker:'AMZN', label:'Consumer', pct:10 },
+    { ticker:'GOOG', label:'Comm', pct:15 },
+  ],
+  IDX: [
+    { ticker:'BBCA', label:'Banking', pct:25 },
+    { ticker:'TLKM', label:'Telco', pct:15 },
+    { ticker:'ASII', label:'Auto', pct:15 },
+    { ticker:'UNVR', label:'Consumer', pct:15 },
+    { ticker:'LQ45 ETF', label:'Index', pct:20 },
+    { ticker:'CASH', label:'Reserve', pct:10 },
+  ]
+};
+
+// ─── SYSTEM PROMPT (AMT Framework embedded) ───
+const SYSTEM_PROMPT = `You are AMT Investment Manager — a personal investment research analyst.
+Language: Bahasa Indonesia for narrative, English for technical terms.
+⚠️ Output bukan financial advice. Keputusan investasi tanggung jawab investor.
+
+## AMT Framework v3.4 (Adaptive Margin Theory)
+63 academic sources. Principle Zero: CONTINUE PLAYING (Carse) — survival first.
+
+### 3 Gates (Binary — ALL must PASS)
+1. Survival Gate: MTL < 65% portfolio
+2. Barbell Gate: Position must be SAFE or CONVICTION, no "forbidden zone"
+3. Correlation Regime Gate: Diversification must match current stock-bond correlation regime
+
+### 4 Margins (Weighted Score)
+- Safety (0.25): Graham Number, P/E×P/B≤22.5, ROIC vs WACC, margin of safety
+- Timing (0.10): RSI, 50/200 MA, MACD, support/resistance, EBP signal
+- Diversification (0.30): Dalio Holy Grail (15-20 uncorrelated streams)
+- Behavior (0.35): Automation ≥70%, 24h buffer, bias checklist
+
+### 6 Moat Dimensions
+Cost Advantage, Intangible Assets, Switching Costs, Network Effects, Efficient Scale, Disruption Position (1-5)
+
+### Hard Rules
+- ROIC < WACC = NO BUY (McKinsey — value destruction)
+- Disruption Score 1-2 = NO BUY
+- IDX country risk premium = +10% (min 35% margin of safety vs 25% US)
+- Web search results should be cited when available
+
+## Stock Analysis Output Format
+Use this structured format:
+## [TICKER] — [Name]
+**Price**: $XX | **Graham Number**: $XX | **Margin of Safety**: XX%
+
+### 🛡 Part 1: Graham
+[Graham Number, P/E×P/B, CR, D/E, PEG, earnings stability]
+**Verdict**: PASS / PARTIAL / FAIL
+
+### 📊 Part 2: McKinsey
+[ROIC vs WACC, economic profit, FCF yield, revenue growth]
+**Verdict**: SUPREME CREATOR / STRONG CREATOR / ... / DESTROYER
+
+### 📈 Part 3: Murphy
+[RSI, 50MA, 200MA, MACD, trend, support/resistance, volume]
+**Verdict**: UPTREND / CONSOLIDATION / DOWNTREND
+
+### 🔄 Part 4: Hurst
+[Presidential cycle, seasonal, intermarket]
+**Verdict**: Timing assessment
+
+### 🏰 Part 5: Integrated
+Moat scores, Red Flags, Portfolio Rules compliance
+
+### ⚡ INTEGRATED VERDICT: [BUY / HOLD / TRIM / SELL / WATCHLIST]
+
+## Shortcut Commands
+- health: Portfolio health check (value, returns, HHI, sectors, risk flags)
+- rebal: Rebalancing progress and action items
+- watchlist: Current prices, catalysts, entry points
+- market update: Market conditions + portfolio impact
+- allocate [amount]: Budget allocation recommendation
+- analyze [TICKER]: Full 5-Part AMT analysis
+- full report: All 5 deliverables
+
+## KPIs
+US: Growth >1%/mo, Min 4 sectors, JCI <20%, HHI <2000
+IDX: Growth ≥1%/mo, Min 5 sectors, BBCA <60%, HHI <2500
+
+Always use current data. State ranges, not point estimates. Be specific with numbers.`;
+
+// ─── INIT ───
+function init() {
+  appSecret = localStorage.getItem('amt_app_secret') || '';
+  const savedConvos = localStorage.getItem('amt_conversations');
+  if (savedConvos) conversations = JSON.parse(savedConvos);
+  
+  const savedPfUS = localStorage.getItem('amt_portfolio_US');
+  const savedPfIDX = localStorage.getItem('amt_portfolio_IDX');
+  if (savedPfUS) PORTFOLIOS.US.holdings = JSON.parse(savedPfUS);
+  if (savedPfIDX) PORTFOLIOS.IDX.holdings = JSON.parse(savedPfIDX);
+  
+  if (!appSecret) {
+    document.getElementById('onboarding').classList.remove('hidden');
+  } else {
+    document.getElementById('onboarding').classList.add('hidden');
+  }
+  
+  updateApiStatus();
+  renderPortfolio();
+  updateBudget(document.getElementById('budget-slider').value);
+  renderHistory();
+}
+
+// ─── ONBOARDING ───
+function saveKeyAndStart() {
+  const code = document.getElementById('onboard-key').value.trim();
+  if (code) {
+    appSecret = code;
+    localStorage.setItem('amt_app_secret', code);
+  }
+  document.getElementById('onboarding').classList.add('hidden');
+  updateApiStatus();
+}
+
+// ─── ACCESS CODE ───
+function saveApiKey() {
+  const code = document.getElementById('api-key-input').value.trim();
+  if (code) {
+    appSecret = code;
+    localStorage.setItem('amt_app_secret', code);
+    updateApiStatus();
+    addSystemMsg('✅ Access code saved');
+  }
+}
+function updateApiStatus() {
+  const el = document.getElementById('api-status');
+  const settingsInput = document.getElementById('api-key-input');
+  if (appSecret) {
+    el.innerHTML = '<span class="status-badge connected"><span class="status-dot"></span>Connected</span>';
+    if (settingsInput) settingsInput.value = '••••••••';
+  } else {
+    el.innerHTML = '<span class="status-badge disconnected"><span class="status-dot"></span>No Access Code</span>';
+  }
+}
+
+// ─── NAVIGATION ───
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'history') renderHistory();
+  if (name === 'portfolio') renderPortfolio();
+}
+
+function setPortfolio(pf) {
+  currentPortfolio = pf;
+  document.querySelectorAll('.portfolio-toggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.portfolio === pf);
+  });
+  document.getElementById('pf-label').textContent = pf;
+  renderPortfolio();
+  updateCalcForPortfolio();
+}
+
+// ─── CHAT ───
+function sendShortcut(cmd) {
+  const suffix = currentPortfolio === 'IDX' ? ' IDX' : '';
+  document.getElementById('chat-input').value = cmd + suffix;
+  sendMessage();
+}
+
+function triggerScreenshotAnalysis() {
+  // Set placeholder text, then open camera/gallery
+  const input = document.getElementById('chat-input');
+  input.value = `Portfolio ${currentPortfolio} saya (screenshot). Tolong full report: health check, rebalancing status, underperformer analysis, watchlist update, dan allocation recommendation.`;
+  document.getElementById('image-input').click();
+}
+
+function openAllocCalc() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-calc').classList.add('active');
+  document.querySelectorAll('.nav-item')[2].classList.add('active');
+}
+
+// ─── IMAGE HANDLING ───
+function handleImageAttach(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // Validate
+  if (!file.type.startsWith('image/')) {
+    addSystemMsg('⚠️ Hanya file gambar yang didukung');
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    addSystemMsg('⚠️ Ukuran file max 20MB');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64Full = e.target.result;
+    const base64Data = base64Full.split(',')[1];
+    const mediaType = file.type;
+    
+    attachedImage = { base64: base64Data, mediaType, name: file.name, size: file.size, dataUrl: base64Full };
+    
+    // Show preview strip
+    document.getElementById('img-preview-strip').classList.add('active');
+    document.getElementById('img-preview-thumb').src = base64Full;
+    document.getElementById('img-preview-name').textContent = file.name;
+    document.getElementById('img-preview-size').textContent = formatFileSize(file.size) + ' — Ready to analyze';
+    document.getElementById('attach-btn').classList.add('has-image');
+    
+    // Auto-fill suggestion if input is empty
+    const input = document.getElementById('chat-input');
+    if (!input.value.trim()) {
+      input.value = `Portfolio ${currentPortfolio} saya (screenshot). Tolong full report: health check, rebalancing, analysis, watchlist, allocation.`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAttachedImage() {
+  attachedImage = null;
+  document.getElementById('img-preview-strip').classList.remove('active');
+  document.getElementById('img-preview-thumb').src = '';
+  document.getElementById('attach-btn').classList.remove('has-image');
+  document.getElementById('image-input').value = '';
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if ((!text && !attachedImage) || isStreaming) return;
+  
+  if (!appSecret) {
+    addSystemMsg('⚠️ Masukkan access code dulu di Settings');
+    return;
+  }
+  
+  // Build display message
+  const displayText = text || '📸 [Screenshot attached]';
+  
+  // Add portfolio context
+  const pfData = PORTFOLIOS[currentPortfolio];
+  let contextText = text || 'Analisa screenshot portfolio ini.';
+  if (pfData.holdings.length > 0) {
+    const holdingsStr = pfData.holdings.map(h => 
+      `${h.ticker}: ${h.shares} shares @ ${pfData.currency}${h.avgPrice}`
+    ).join(', ');
+    contextText += `\n\n[Saved Portfolio ${currentPortfolio}: ${holdingsStr}]`;
+  }
+  contextText += `\n[Active Portfolio: ${currentPortfolio}]`;
+  
+  // Show user message with image if present
+  if (attachedImage) {
+    addMsgWithImage('user', displayText, attachedImage.dataUrl);
+  } else {
+    addMsg('user', displayText);
+  }
+  
+  // Build API message content
+  let userContent = [];
+  if (attachedImage) {
+    userContent.push({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: attachedImage.mediaType,
+        data: attachedImage.base64
+      }
+    });
+  }
+  userContent.push({ type: 'text', text: contextText });
+  
+  chatHistory.push({ role: 'user', content: userContent });
+  
+  // Clear input
+  input.value = ''; input.style.height = 'auto';
+  clearAttachedImage();
+  
+  isStreaming = true;
+  document.getElementById('send-btn').disabled = true;
+  const typingEl = showTyping();
+  
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-app-secret': appSecret
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        messages: chatHistory.slice(-20)
+      })
+    });
+    
+    typingEl.remove();
+    
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `API Error ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const reply = data.content.map(c => c.text || '').join('\n');
+    
+    addMsg('assistant', reply);
+    chatHistory.push({ role: 'assistant', content: reply });
+    saveConversation(displayText, reply);
+    
+  } catch (err) {
+    typingEl.remove();
+    addMsg('assistant', `❌ Error: ${err.message}\n\nPastikan access code benar dan server aktif.`);
+  }
+  
+  isStreaming = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+function addMsg(role, content) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = role === 'assistant' ? renderMarkdown(content) : escapeHtml(content);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addMsgWithImage(role, text, imageDataUrl) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `
+    <div class="img-label">📸 Screenshot attached</div>
+    <img src="${imageDataUrl}" class="msg-image" onclick="openImageFullscreen(this.src)" />
+    ${text ? '<div style="margin-top:8px;">' + escapeHtml(text) + '</div>' : ''}
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function openImageFullscreen(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer;';
+  overlay.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;" />`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+}
+
+function addSystemMsg(text) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg system';
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'typing';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+// ─── MARKDOWN RENDERER ───
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(text) {
+  // Escape HTML first
+  let html = escapeHtml(text);
+  
+  // Code blocks (``` ... ```)
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    return `<pre><code>${code.trim()}</code></pre>`;
+  });
+  
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // Tables
+  html = html.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)*)/gm, (match, header, sep, body) => {
+    const hCells = header.split('|').filter(c => c.trim());
+    const bRows = body.trim().split('\n');
+    let table = '<table><thead><tr>';
+    hCells.forEach(c => table += `<th>${c.trim()}</th>`);
+    table += '</tr></thead><tbody>';
+    bRows.forEach(row => {
+      const cells = row.split('|').filter(c => c.trim());
+      table += '<tr>';
+      cells.forEach(c => table += `<td>${c.trim()}</td>`);
+      table += '</tr>';
+    });
+    table += '</tbody></table>';
+    return table;
+  });
+  
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  
+  // Bold & italic
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+  // Blockquotes
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr>');
+  
+  // Line breaks (double newline = paragraph break)
+  html = html.replace(/\n\n/g, '<br><br>');
+  html = html.replace(/\n/g, '<br>');
+  
+  return html;
+}
+
+// ─── PORTFOLIO MANAGEMENT ───
+function renderPortfolio() {
+  const list = document.getElementById('holdings-list');
+  const holdings = PORTFOLIOS[currentPortfolio].holdings;
+  
+  list.innerHTML = '<div class="holding-row" style="margin-bottom:4px;"><span class="form-label" style="margin:0;">Ticker</span><span class="form-label" style="margin:0;">Shares</span><span class="form-label" style="margin:0;">Avg Price</span><span></span></div>';
+  
+  holdings.forEach((h, i) => {
+    list.innerHTML += `
+      <div class="holding-row">
+        <input value="${h.ticker}" placeholder="AAPL" onchange="updateHolding(${i},'ticker',this.value)" />
+        <input type="number" value="${h.shares}" placeholder="10" onchange="updateHolding(${i},'shares',this.value)" />
+        <input type="number" value="${h.avgPrice}" placeholder="150" onchange="updateHolding(${i},'avgPrice',this.value)" />
+        <button class="btn-remove" onclick="removeHolding(${i})">✕</button>
+      </div>`;
+  });
+}
+
+function addHoldingRow() {
+  PORTFOLIOS[currentPortfolio].holdings.push({ ticker:'', shares:'', avgPrice:'' });
+  renderPortfolio();
+}
+function removeHolding(i) {
+  PORTFOLIOS[currentPortfolio].holdings.splice(i, 1);
+  renderPortfolio();
+}
+function updateHolding(i, field, val) {
+  PORTFOLIOS[currentPortfolio].holdings[i][field] = val;
+}
+function savePortfolio() {
+  localStorage.setItem('amt_portfolio_' + currentPortfolio, JSON.stringify(PORTFOLIOS[currentPortfolio].holdings));
+  addSystemMsg(`✅ Portfolio ${currentPortfolio} saved (${PORTFOLIOS[currentPortfolio].holdings.length} holdings)`);
+  switchToChat();
+}
+function loadToChat() {
+  savePortfolio();
+  const pf = PORTFOLIOS[currentPortfolio];
+  const summary = pf.holdings.filter(h => h.ticker).map(h => `${h.ticker}: ${h.shares} shares @ ${pf.currency}${h.avgPrice}`).join('\n');
+  document.getElementById('chat-input').value = `Portfolio ${currentPortfolio} saya:\n${summary}\n\nTolong health check portfolio ini.`;
+  switchToChat();
+}
+function switchToChat() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-chat').classList.add('active');
+  document.querySelectorAll('.nav-item')[0].classList.add('active');
+}
+
+// ─── CALCULATOR ───
+function updateCalcForPortfolio() {
+  const pf = PORTFOLIOS[currentPortfolio];
+  const slider = document.getElementById('budget-slider');
+  slider.min = pf.budgetMin;
+  slider.max = pf.budgetMax;
+  slider.step = pf.budgetMin < 1000 ? 10 : 100000;
+  slider.value = (pf.budgetMin + pf.budgetMax) / 2;
+  document.getElementById('slider-min').textContent = formatCurrency(pf.budgetMin);
+  document.getElementById('slider-max').textContent = formatCurrency(pf.budgetMax);
+  updateBudget(slider.value);
+}
+
+function formatCurrency(val) {
+  val = Number(val);
+  if (currentPortfolio === 'IDX') {
+    if (val >= 1000000) return 'Rp' + (val/1000000).toFixed(1) + 'jt';
+    return 'Rp' + val.toLocaleString('id');
+  }
+  return '$' + val;
+}
+
+function updateBudget(val) {
+  document.getElementById('budget-display').textContent = formatCurrency(val);
+  renderAllocation(Number(val));
+}
+
+function renderAllocation(budget) {
+  const grid = document.getElementById('alloc-grid');
+  const allocs = DEFAULT_ALLOCS[currentPortfolio] || [];
+  
+  grid.innerHTML = '';
+  allocs.forEach(a => {
+    const amount = (budget * a.pct / 100);
+    grid.innerHTML += `
+      <div class="alloc-row">
+        <span class="alloc-ticker">${a.ticker}</span>
+        <div style="flex:1;">
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px;">${a.label} — ${a.pct}%</div>
+          <div class="alloc-bar-bg"><div class="alloc-bar" style="width:${a.pct}%"></div></div>
+        </div>
+        <span class="alloc-amount">${formatCurrency(amount.toFixed(currentPortfolio==='IDX'?0:2))}</span>
+      </div>`;
+  });
+}
+
+function sendAllocToChat() {
+  const budget = document.getElementById('budget-slider').value;
+  const cmd = currentPortfolio === 'IDX'
+    ? `allocate ${formatCurrency(budget)} IDX`
+    : `allocate $${budget} US`;
+  document.getElementById('chat-input').value = cmd;
+  switchToChat();
+  setTimeout(() => sendMessage(), 100);
+}
+
+// ─── CHAT HISTORY ───
+function saveConversation(question, answer) {
+  conversations.unshift({
+    id: Date.now(),
+    date: new Date().toISOString(),
+    portfolio: currentPortfolio,
+    question: question.substring(0, 100),
+    preview: answer.substring(0, 150),
+    messages: [...chatHistory]
+  });
+  // Keep last 50 conversations
+  if (conversations.length > 50) conversations = conversations.slice(0, 50);
+  localStorage.setItem('amt_conversations', JSON.stringify(conversations));
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (conversations.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;font-size:12px;">Belum ada history</div>';
+    return;
+  }
+  list.innerHTML = '';
+  conversations.forEach((c, i) => {
+    const d = new Date(c.date);
+    list.innerHTML += `
+      <div class="history-item" onclick="loadConversation(${i})">
+        <div class="history-date">${d.toLocaleDateString('id')} ${d.toLocaleTimeString('id',{hour:'2-digit',minute:'2-digit'})} — ${c.portfolio || 'US'}</div>
+        <div class="history-preview" style="color:var(--green);margin-bottom:2px;">${escapeHtml(c.question)}</div>
+        <div class="history-preview">${escapeHtml(c.preview)}</div>
+      </div>`;
+  });
+}
+
+function loadConversation(i) {
+  const convo = conversations[i];
+  chatHistory = convo.messages || [];
+  const container = document.getElementById('chat-messages');
+  container.innerHTML = '<div class="msg system">📂 Loaded conversation from ' + new Date(convo.date).toLocaleDateString('id') + '</div>';
+  chatHistory.forEach(m => addMsg(m.role, m.content));
+  switchToChat();
+}
+
+function clearHistory() {
+  if (confirm('Clear semua chat history?')) {
+    conversations = [];
+    localStorage.removeItem('amt_conversations');
+    renderHistory();
+    addSystemMsg('🗑️ History cleared');
+  }
+}
+
+// ─── PWA INSTALL ───
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').classList.add('show');
+});
+document.getElementById('install-btn').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('install-banner').classList.remove('show');
+  }
+});
+
+// ─── SERVICE WORKER ───
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(console.error);
+}
+
+// ─── BOOT ───
+init();
+</script>
+</body>
+</html>
